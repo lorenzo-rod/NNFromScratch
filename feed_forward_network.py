@@ -19,7 +19,6 @@ class LinearLayer:
         self.grad_weights = np.zeros_like(self.grad_weights)
         self.grad_biases = np.zeros_like(self.grad_biases)
         
-    
 class ReLU:
     def forward(self, z):
         self.z = z
@@ -38,6 +37,10 @@ class Softmax:
     def forward(self, z):
         exp_z = np.exp(z - np.max(z))
         return exp_z / np.sum(exp_z)
+    
+class Sigmoid:
+    def forward(self, z):
+        return 1 / (1 + np.exp(-z))
     
 class FeedForwardNetwork:
     def __init__(self, input_dim, hidden_dim, n_layers, output_dim):
