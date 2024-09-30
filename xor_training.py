@@ -7,14 +7,14 @@ def xor_gate(x1, x2):
     return x1 ^ x2
 
 INPUT_DIM = 2
-HIDDEN_DIM = 5
-N_LAYERS = 2
+HIDDEN_DIM = 10
+N_LAYERS = 4
 OUTPUT_DIM = 1
 LEARNING_RATE = 5e-3
-N_EPOCHS = 10000
-BATCH_SIZE = 1
+N_EPOCHS = 3000
+BATCH_SIZE = 4
 
-network = FeedForwardNetwork(INPUT_DIM, HIDDEN_DIM, N_LAYERS, OUTPUT_DIM)
+network = FeedForwardNetwork(INPUT_DIM, HIDDEN_DIM, N_LAYERS, OUTPUT_DIM, is_classification=True)
 
 # Training data
 x_train = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
@@ -28,14 +28,17 @@ start_time = time.time()
 for epoch in range(N_EPOCHS):
     epoch_start_time = time.time()
     loss = 0
+    index = 0
 
     for _ in range(BATCH_SIZE):
-        random_index = np.random.choice(x_train.shape[0])
-        input = np.transpose(x_train[random_index]).reshape(INPUT_DIM, 1)
+        index = index % x_train.shape[0]
+        n_index = index
+        index += 1
+        input = np.transpose(x_train[n_index]).reshape(INPUT_DIM, 1)
         y_pred = network.forward(input)
-        y_true = y_train[random_index]
+        y_true = y_train[n_index]
         network.backward(y_true, y_pred)
-        loss += np.sum((y_true - y_pred) ** 2)
+        loss += np.sum(-y_true * np.log(y_pred) - (1 - y_true) * np.log(1 - y_pred))
     
     network.update_params(LEARNING_RATE)
     loss_history[epoch] = loss / BATCH_SIZE
