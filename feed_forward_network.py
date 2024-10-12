@@ -142,22 +142,6 @@ class FeedForwardNetwork:
             layer.linear.reset_gradients()
         self.n_backprop_executions = 0
 
-    def clip_gradients(self, threshold=1.0):
-        for layer in self.layers:
-            if hasattr(layer, "linear"):  # Only linear layers have gradients
-                np.clip(
-                    layer.linear.grad_weights,
-                    -threshold,
-                    threshold,
-                    out=layer.linear.grad_weights,
-                )
-                np.clip(
-                    layer.linear.grad_biases,
-                    -threshold,
-                    threshold,
-                    out=layer.linear.grad_biases,
-                )
-
     def update_params(self, learning_rate):
         self.layers[self.last_training_layer_index].weights -= learning_rate * (
             self.layers[self.last_training_layer_index].grad_weights

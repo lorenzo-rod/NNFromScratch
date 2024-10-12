@@ -43,6 +43,8 @@ loss_history = np.zeros(N_EPOCHS)
 accuracy_history = np.zeros(N_EPOCHS)
 start_time = time.time()
 
+max_accuracy = 0
+
 for epoch in range(N_EPOCHS):
     epoch_start_time = time.time()
     loss = 0
@@ -95,6 +97,8 @@ for epoch in range(N_EPOCHS):
 
         accuracy = correct_predictions / x_test.shape[0]
         print(f"Test Accuracy: {accuracy * 100:.2f}%")
+        if accuracy > max_accuracy:
+            max_accuracy = accuracy
 
 
 # Plot loss history
@@ -119,3 +123,4 @@ for i in range(x_test.shape[0]):
 
 accuracy = correct_predictions / x_test.shape[0]
 print(f"Test Accuracy: {accuracy * 100:.2f}%")
+print(f"Maximum Test Accuracy: {max_accuracy * 100:.2f}%")
