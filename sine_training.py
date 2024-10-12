@@ -37,7 +37,7 @@ for epoch in range(N_EPOCHS):
         y_pred = network.forward(input)
         y_true = y_train[random_index]
         network.backward(y_true, y_pred)
-        loss += np.sum((y_true - y_pred) ** 2)
+        loss += np.sum(0.5 * (y_true - y_pred) ** 2)
 
     network.update_params(LEARNING_RATE)
     loss_history[epoch] = loss / BATCH_SIZE
