@@ -1,28 +1,19 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from feed_forward_network import FeedForwardNetwork
+from feed_forward_network import FeedForwardNetwork, ReLU, Sigmoid, Softmax
 
-
-def xor_gate(x1, x2):
-    return x1 ^ x2
-
-
-INPUT_DIM = 2
-HIDDEN_DIM = 10
-N_LAYERS = 4
-OUTPUT_DIM = 1
+LAYER_SIZES = [2, 10, 5, 1]
+ACTIVATION_FUNCTIONS = [ReLU(), ReLU(), Sigmoid()]
 LEARNING_RATE = 5e-3
-N_EPOCHS = 3000
+N_EPOCHS = 10000
 BATCH_SIZE = 4
 
-network = FeedForwardNetwork(
-    INPUT_DIM, HIDDEN_DIM, N_LAYERS, OUTPUT_DIM, is_classification=True
-)
+network = FeedForwardNetwork(LAYER_SIZES, ACTIVATION_FUNCTIONS)
 
 # Training data
 x_train = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
-y_train = np.array([xor_gate(x1, x2) for x1, x2 in x_train])
+y_train = np.array([x1 ^ x2 for x1, x2 in x_train])
 
 # Initialize loss history and timing variables
 loss_history = np.zeros(N_EPOCHS)
@@ -38,7 +29,7 @@ for epoch in range(N_EPOCHS):
         index = index % x_train.shape[0]
         n_index = index
         index += 1
-        input = np.transpose(x_train[n_index]).reshape(INPUT_DIM, 1)
+        input = np.transpose(x_train[n_index]).reshape(LAYER_SIZES[0], 1)
         y_pred = network.forward(input)
         y_true = y_train[n_index]
         network.backward(y_true, y_pred)
@@ -74,5 +65,5 @@ plt.show()
 
 # Testing
 for x in x_train:
-    input = np.transpose(x).reshape(INPUT_DIM, 1)
+    input = np.transpose(x).reshape(LAYER_SIZES[0], 1)
     print(f"{x[0]} xor {x[1]} = {network.forward(input)[0]}")

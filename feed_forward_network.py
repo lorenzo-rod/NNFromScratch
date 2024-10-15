@@ -1,161 +1,157 @@
 import numpy as np
+from abc import ABC, abstractmethod
 
 
-class LinearLayer:
+class Layer(ABC):
+    @abstractmethod
+    def forward(self, x):
+        pass
+
+    @abstractmethod
+    def forward_no_grad(self, x):
+        pass
+
+    @abstractmethod
+    def backward(self, y_true, y_pred):
+        pass
+
+    @abstractmethod
+    def reset_gradients(self):
+        pass
+
+    @abstractmethod
+    def update_params(self, learning_rate):
+        pass
+
+
+class LinearLayer(Layer):
     def __init__(self, input_dim, output_dim):
-        self.weights = np.random.randn(input_dim, output_dim)
-        self.biases = np.random.randn(output_dim, 1)
-        self.z = np.zeros((output_dim, 1))
-        self.x = np.zeros((input_dim, 1))
-        self.grad_weights = np.zeros((input_dim, output_dim))
-        self.grad_biases = np.zeros((output_dim, 1))
+        self._weights = np.random.randn(input_dim, output_dim)
+        self._biases = np.random.randn(output_dim, 1)
+        self._x = np.zeros((input_dim, 1))
+        self._grad_weights = np.zeros((input_dim, output_dim))
+        self._grad_biases = np.zeros((output_dim, 1))
+        self._n_backprop_executions = 0
 
     def forward(self, x):
-        self.x = x
-        self.z = np.transpose(self.weights) @ x + self.biases
-        return self.z
+        self._x = x
+        return self.forward_no_grad(x)
+
+    def forward_no_grad(self, x):
+        return np.transpose(self._weights) @ x + self._biases
+
+    def backward(self, upstream_gradient):
+        self._grad_biases += upstream_gradient
+        self._grad_weights += np.outer(self._x, upstream_gradient)
+        self._n_backprop_executions += 1
+        return self._weights @ upstream_gradient
 
     def reset_gradients(self):
-        self.grad_weights = np.zeros_like(self.grad_weights)
-        self.grad_biases = np.zeros_like(self.grad_biases)
+        self._grad_weights = np.zeros_like(self._grad_weights)
+        self._grad_biases = np.zeros_like(self._grad_biases)
+        self._n_backprop_executions = 0
+
+    def update_params(self, learning_rate):
+        self._weights -= (
+            learning_rate * self._grad_weights / self._n_backprop_executions
+        )
+        self._biases -= learning_rate * self._grad_biases / self._n_backprop_executions
 
 
-class ReLU:
+class ReLU(Layer):
     def forward(self, z):
-        self.z = z
-        self.a = np.maximum(0, z)
-        return self.a
+        self._z = z
+        return self.forward_no_grad(z)
+
+    def forward_no_grad(self, z):
+        return np.maximum(0, z)
+
+    def backward(self, upstream_gradient):
+        return np.where(self._z > 0, upstream_gradient, 0)
+
+    def reset_gradients(self):
+        pass
+
+    def update_params(self, learning_rate):
+        pass
 
 
-class LinearLayerWithReLU:
-    def __init__(self, input_dim, output_dim):
-        self.linear = LinearLayer(input_dim, output_dim)
-        self.relu = ReLU()
-
-    def forward(self, x):
-        return self.relu.forward(self.linear.forward(x))
-
-
-class Softmax:
+class Sigmoid(Layer):
     def forward(self, z):
+        self._a = self.forward_no_grad(z)
+        return self._a
+
+    def forward_no_grad(self, z):
+        return 1 / (1 + np.exp(-z))
+
+    def backward(self, upstream_gradient):
+        return upstream_gradient * self._a * (1 - self._a)
+
+    def reset_gradients(self):
+        pass
+
+    def update_params(self, learning_rate):
+        pass
+
+
+class Softmax(Layer):
+    def forward(self, z):
+        return self.forward_no_grad(z)
+
+    def forward_no_grad(self, z):
         exp_z = np.exp(z - np.max(z))
         return exp_z / np.sum(exp_z)
 
+    def backward(self):
+        pass
 
-class Sigmoid:
-    def forward(self, z):
-        self.z = z
-        self.a = 1 / (1 + np.exp(-z))
-        return self.a
+    def reset_gradients(self):
+        pass
+
+    def update_params(self, learning_rate):
+        pass
+
+
+class Identity(Layer):
+    def forward(self, x):
+        return self.forward_no_grad(x)
+
+    def forward_no_grad(self, x):
+        return x
+
+    def backward(self):
+        pass
+
+    def reset_gradients(self):
+        pass
+
+    def update_params(self):
+        pass
 
 
 class FeedForwardNetwork:
-    def __init__(
-        self, input_dim, hidden_dim, n_layers, output_dim, is_classification=False
-    ):
-        self.is_classification = is_classification
+    def __init__(self, layer_sizes, activation_functions):
         self.layers = []
-        self.layers.append(LinearLayerWithReLU(input_dim, hidden_dim))
-        for _ in range(n_layers - 1):
-            self.layers.append(LinearLayerWithReLU(hidden_dim, hidden_dim))
-        self.layers.append(LinearLayer(hidden_dim, output_dim))
-        if is_classification:
-            self.last_training_layer_index = -2
-            if output_dim == 1:
-                self.layers.append(Sigmoid())
-                self.is_binary_classification = True
-            else:
-                self.layers.append(Softmax())
-                self.is_binary_classification = False
-        else:
-            self.last_training_layer_index = -1
-            self.is_binary_classification = False
-        self.n_backprop_executions = 0
+        for i in range(len(layer_sizes) - 1):
+            self.layers.append(LinearLayer(layer_sizes[i], layer_sizes[i + 1]))
+            self.layers.append(activation_functions[i])
 
     def forward(self, x):
         for layer in self.layers:
             x = layer.forward(x)
         return x
 
-    def backward(self, y_true, y_pred):
-        error = y_pred - y_true
-        self.layers[self.last_training_layer_index].grad_biases += error
-        self.layers[self.last_training_layer_index].grad_weights += np.outer(
-            self.layers[self.last_training_layer_index].x, error
-        )
-        upstream_gradient = error
-        if self.is_binary_classification or not self.is_classification:
-            weights_diagonal = self.layers[self.last_training_layer_index].weights
-            extended_weights_diagonal = weights_diagonal
-        else:
-            weights_diagonal = np.diagonal(
-                self.layers[self.last_training_layer_index].weights
-            ).reshape(-1, 1)
-            extended_weights_diagonal = np.concatenate(
-                (
-                    weights_diagonal,
-                    self.layers[self.last_training_layer_index]
-                    .weights[len(weights_diagonal) :, len(weights_diagonal) - 1]
-                    .reshape(-1, 1),
-                )
-            )
-        pad_size = (
-            self.layers[self.last_training_layer_index - 1].linear.grad_biases.shape[0]
-            - weights_diagonal.shape[0]
-        )
-        padded_upstream_gradient = np.pad(
-            upstream_gradient, ((0, pad_size), (0, 0)), "edge"
-        )
-        self.layers[self.last_training_layer_index - 1].linear.grad_biases += np.where(
-            self.layers[self.last_training_layer_index - 1].linear.z > 0,
-            extended_weights_diagonal * padded_upstream_gradient,
-            0,
-        )
-        self.layers[self.last_training_layer_index - 1].linear.grad_weights += np.outer(
-            self.layers[self.last_training_layer_index - 1].linear.x,
-            np.where(
-                self.layers[self.last_training_layer_index - 1].linear.z > 0,
-                extended_weights_diagonal * padded_upstream_gradient,
-                0,
-            ),
-        )
-        upstream_gradient = self.layers[
-            self.last_training_layer_index - 1
-        ].linear.grad_biases.copy()
-        for layer in reversed(self.layers[: self.last_training_layer_index - 1]):
-            weights_diagonal = (
-                np.diagonal(self.layers[self.layers.index(layer) + 1].linear.weights)
-            ).reshape(-1, 1)
-            layer.linear.grad_biases += np.where(
-                layer.linear.z > 0, weights_diagonal * upstream_gradient, 0
-            )
-            layer.linear.grad_weights += np.outer(
-                layer.linear.x,
-                np.where(layer.linear.z > 0, weights_diagonal * upstream_gradient, 0),
-            )
-            upstream_gradient = layer.linear.grad_biases.copy()
-        self.n_backprop_executions += 1
+    def forward_no_grad(self, x):
+        for layer in self.layers:
+            x = layer.forward_no_grad(x)
+        return x
 
-    def reset_gradients(self):
-        self.layers[self.last_training_layer_index].reset_gradients()
-        for layer in self.layers[: self.last_training_layer_index]:
-            layer.linear.reset_gradients()
-        self.n_backprop_executions = 0
+    def backward(self, y_true, y_pred):
+        upstream_gradient = y_pred - y_true
+        for layer in reversed(self.layers[:-1]):
+            upstream_gradient = layer.backward(upstream_gradient)
 
     def update_params(self, learning_rate):
-        self.layers[self.last_training_layer_index].weights -= learning_rate * (
-            self.layers[self.last_training_layer_index].grad_weights
-            / self.n_backprop_executions
-        )
-        self.layers[self.last_training_layer_index].biases -= learning_rate * (
-            self.layers[self.last_training_layer_index].grad_biases
-            / self.n_backprop_executions
-        )
-        for layer in self.layers[: self.last_training_layer_index]:
-            layer.linear.weights -= learning_rate * (
-                layer.linear.grad_weights / self.n_backprop_executions
-            )
-            layer.linear.biases -= learning_rate * (
-                layer.linear.grad_biases / self.n_backprop_executions
-            )
-        self.reset_gradients()
+        for layer in self.layers[:-1]:
+            layer.update_params(learning_rate)
+            layer.reset_gradients()

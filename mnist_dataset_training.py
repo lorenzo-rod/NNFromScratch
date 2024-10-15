@@ -1,8 +1,9 @@
 from sklearn.datasets import fetch_openml
 import numpy as np
-from feed_forward_network import FeedForwardNetwork
+from feed_forward_network import FeedForwardNetwork, ReLU, Softmax, Sigmoid
 import time
 import matplotlib.pyplot as plt
+from sklearn.utils import shuffle
 
 # Fetch MNIST from openml
 mnist = fetch_openml("mnist_784")
@@ -13,7 +14,7 @@ y = mnist.target.astype(int)
 from sklearn.model_selection import train_test_split
 
 x_train, x_test, y_train, y_test = train_test_split(
-    x, y, test_size=0.2, random_state=42
+    x, y, test_size=0.2, random_state=101
 )
 
 # Flatten the images (28x28) into vectors of length 784 to feed into your network
@@ -25,44 +26,44 @@ y_train = np.eye(10)[y_train]  # Shape: (60000, 10)
 y_test = np.eye(10)[y_test]  # Shape: (10000, 10)
 
 # Define network parameters
-INPUT_DIM = 784
-HIDDEN_DIM = 256
-N_LAYERS = 2
-OUTPUT_DIM = 10
+LAYER_SIZES = [784, 512, 256, 128, 10]
+ACTIVATION_FUNCTIONS = [ReLU(), ReLU(), ReLU(), Softmax()]
 LEARNING_RATE = 1e-3
-N_EPOCHS = 1000
-BATCH_SIZE = 600
+N_EPOCHS = 100
+BATCH_SIZE = 128
 
 # Initialize your neural network
-network = FeedForwardNetwork(
-    INPUT_DIM, HIDDEN_DIM, N_LAYERS, OUTPUT_DIM, is_classification=True
-)
+network = FeedForwardNetwork(LAYER_SIZES, ACTIVATION_FUNCTIONS)
 
 # Initialize loss history and timing variables
 loss_history = np.zeros(N_EPOCHS)
 accuracy_history = np.zeros(N_EPOCHS)
 start_time = time.time()
+test_accuracy_history = np.zeros(N_EPOCHS // 5)
 
 max_accuracy = 0
 
 for epoch in range(N_EPOCHS):
     epoch_start_time = time.time()
     loss = 0
-    index = 0
     n_correct = 0
 
     for _ in range(BATCH_SIZE):
-        index = index % x_train.shape[0]
-        n_index = index
-        index += 1
-        input = x_train[n_index].reshape(INPUT_DIM, 1)
+        n_index = np.random.choice(x_train.shape[0])
+        input = x_train[n_index].reshape(LAYER_SIZES[0], 1)
         y_pred = network.forward(input)
-        y_true = y_train[n_index].reshape(OUTPUT_DIM, 1)
+        y_true = y_train[n_index].reshape(LAYER_SIZES[-1], 1)
         network.backward(y_true, y_pred)
         loss += np.sum(-y_true * np.log(y_pred + 1e-8))
         # Count correct predictions
         if np.argmax(y_pred) == np.argmax(y_true):
             n_correct += 1
+
+    # batch_indices = np.random.choice(x_train.shape[0], BATCH_SIZE)
+    # x_batch = x_train[batch_indices]
+    # y_batch = y_train[batch_indices]
+    # y_pred_batch = network.forward(x_batch.T)
+    # network.backward(y_batch.T, y_pred_batch)
 
     network.update_params(LEARNING_RATE)
     loss_history[epoch] = loss / BATCH_SIZE
@@ -85,11 +86,11 @@ for epoch in range(N_EPOCHS):
     )
 
     # Evaluate the model on the test set every 10 epochs
-    if (epoch + 1) % 10 == 0:
+    if (epoch + 1) % 5 == 0:
         correct_predictions = 0
         for i in range(x_test.shape[0]):
-            input = x_test[i].reshape(INPUT_DIM, 1)
-            output = network.forward(input)
+            input = x_test[i].reshape(LAYER_SIZES[0], 1)
+            output = network.forward_no_grad(input)
             predicted_label = np.argmax(output)
             true_label = np.argmax(y_test[i])
             if predicted_label == true_label:
@@ -99,14 +100,26 @@ for epoch in range(N_EPOCHS):
         print(f"Test Accuracy: {accuracy * 100:.2f}%")
         if accuracy > max_accuracy:
             max_accuracy = accuracy
+        test_accuracy_history[epoch // 5] = accuracy
 
 
-# Plot loss history
+# Plot loss history and test history
 plt.figure(figsize=(10, 6))
-plt.plot(np.arange(1, N_EPOCHS + 1), loss_history, label="Loss")
+plt.plot(np.arange(1, N_EPOCHS + 1), loss_history, label="Training Loss")
 plt.xlabel("Epoch")
 plt.ylabel("Loss")
-plt.title("Training Loss Over Time")
+plt.title("Training and Test Loss Over Time")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# Plot accuracy history
+plt.figure(figsize=(10, 6))
+plt.plot(np.arange(1, N_EPOCHS + 1), accuracy_history, label="Training Accuracy")
+plt.plot(np.arange(1, N_EPOCHS + 1, 5), test_accuracy_history, label="Test Accuracy")
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.title("Training and Test Accuracy Over Time")
 plt.legend()
 plt.grid(True)
 plt.show()
@@ -114,8 +127,8 @@ plt.show()
 # Evaluate the model
 correct_predictions = 0
 for i in range(x_test.shape[0]):
-    input = x_test[i].reshape(INPUT_DIM, 1)
-    output = network.forward(input)
+    input = x_test[i].reshape(LAYER_SIZES[0], 1)
+    output = network.forward_no_grad(input)
     predicted_label = np.argmax(output)
     true_label = np.argmax(y_test[i])
     if predicted_label == true_label:
