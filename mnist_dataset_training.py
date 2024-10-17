@@ -28,12 +28,12 @@ y_test = np.eye(10)[y_test]  # Shape: (10000, 10)
 # Define network parameters
 LAYER_SIZES = [784, 512, 256, 128, 10]
 ACTIVATION_FUNCTIONS = [ReLU(), ReLU(), ReLU(), Softmax()]
-LEARNING_RATE = 1e-3
+LEARNING_RATE = 1e-4
 N_EPOCHS = 100
 BATCH_SIZE = 128
 
 # Initialize your neural network
-network = FeedForwardNetwork(LAYER_SIZES, ACTIVATION_FUNCTIONS)
+network = FeedForwardNetwork(LAYER_SIZES, ACTIVATION_FUNCTIONS, BATCH_SIZE)
 
 # Initialize loss history and timing variables
 loss_history = np.zeros(N_EPOCHS)
@@ -48,22 +48,24 @@ for epoch in range(N_EPOCHS):
     loss = 0
     n_correct = 0
 
-    for _ in range(BATCH_SIZE):
-        n_index = np.random.choice(x_train.shape[0])
-        input = x_train[n_index].reshape(LAYER_SIZES[0], 1)
-        y_pred = network.forward(input)
-        y_true = y_train[n_index].reshape(LAYER_SIZES[-1], 1)
-        network.backward(y_true, y_pred)
-        loss += np.sum(-y_true * np.log(y_pred + 1e-8))
-        # Count correct predictions
-        if np.argmax(y_pred) == np.argmax(y_true):
-            n_correct += 1
+    # for _ in range(BATCH_SIZE):
+    #     n_index = np.random.choice(x_train.shape[0])
+    #     input = x_train[n_index].reshape(LAYER_SIZES[0], 1)
+    #     y_pred = network.forward(input)
+    #     y_true = y_train[n_index].reshape(LAYER_SIZES[-1], 1)
+    #     network.backward(y_true, y_pred)
+    #     loss += np.sum(-y_true * np.log(y_pred + 1e-8))
+    #     # Count correct predictions
+    #     if np.argmax(y_pred) == np.argmax(y_true):
+    #         n_correct += 1
 
-    # batch_indices = np.random.choice(x_train.shape[0], BATCH_SIZE)
-    # x_batch = x_train[batch_indices]
-    # y_batch = y_train[batch_indices]
-    # y_pred_batch = network.forward(x_batch.T)
-    # network.backward(y_batch.T, y_pred_batch)
+    batch_indices = np.random.choice(x_train.shape[0], BATCH_SIZE)
+    x_batch = x_train[batch_indices].reshape(LAYER_SIZES[0], BATCH_SIZE)
+    y_batch = y_train[batch_indices].reshape(LAYER_SIZES[-1], BATCH_SIZE)
+    y_pred_batch = network.forward(x_batch)
+    network.backward(y_batch, y_pred_batch)
+    loss += np.sum(-y_batch * np.log(y_pred_batch + 1e-8))
+    n_correct += np.sum(np.argmax(y_pred_batch, axis=0) == np.argmax(y_batch, axis=0))
 
     network.update_params(LEARNING_RATE)
     loss_history[epoch] = loss / BATCH_SIZE
