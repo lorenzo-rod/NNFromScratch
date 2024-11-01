@@ -20,20 +20,16 @@ x_train, x_test, y_train, y_test = train_test_split(
 x_train = x_train.to_numpy().reshape(-1, 28 * 28)  # Shape: (60000, 784)
 x_test = x_test.to_numpy().reshape(-1, 28 * 28)  # Shape: (10000, 784)
 
-# Normalize the input data
-x_train = (x_train - np.mean(x_train)) / np.std(x_train)
-x_test = (x_test - np.mean(x_train)) / np.std(x_train)
-
 # Convert the labels to one-hot encoding
 y_train = np.eye(10)[y_train]  # Shape: (60000, 10)
 y_test = np.eye(10)[y_test]  # Shape: (10000, 10)
 
 # Define network parameters
-LAYER_SIZES = [784, 512, 256, 128, 10]
-ACTIVATION_FUNCTIONS = [ReLU(), ReLU(), ReLU(), Softmax()]
-LEARNING_RATE = 1e-6
-N_EPOCHS = 4000
-BATCH_SIZE = 16
+LAYER_SIZES = [784, 256, 128, 10]
+ACTIVATION_FUNCTIONS = [Sigmoid(), ReLU(), Softmax()]
+LEARNING_RATE = 1e-2
+N_EPOCHS = 400
+BATCH_SIZE = 8
 
 # Initialize your neural network
 network = FeedForwardNetwork(LAYER_SIZES, ACTIVATION_FUNCTIONS, BATCH_SIZE)
@@ -62,19 +58,29 @@ for epoch in range(N_EPOCHS):
     #     if np.argmax(y_pred) == np.argmax(y_true):
     #         n_correct += 1
 
-    for _ in range(60000 // BATCH_SIZE):
-        batch_indices = np.random.choice(x_train.shape[0], BATCH_SIZE)
-        x_batch = x_train[batch_indices].T
-        y_batch = y_train[batch_indices].T
+    for i in range(x_train.shape[0] // BATCH_SIZE):
+        indices = [np.random.randint(0, x_train.shape[0]) for _ in range(BATCH_SIZE)]
+        x_batch = x_train[indices].T
+        y_batch = y_train[indices].T
         y_pred_batch = network.forward(x_batch)
         network.backward(y_batch, y_pred_batch, LEARNING_RATE)
         loss += np.sum(-y_batch * np.log(y_pred_batch + 1e-8))
+        # Compute correct predictions
         n_correct += np.sum(
             np.argmax(y_pred_batch, axis=0) == np.argmax(y_batch, axis=0)
         )
+        # Print % of epoch completed
+        completition_bar = "" + "=" * int(
+            (i + 1) / (x_train.shape[0] // BATCH_SIZE) * 10
+        )
+        completition_bar += " " * (10 - len(completition_bar))
+        print(
+            f"[{completition_bar}] {int((i + 1) / (x_train.shape[0] // BATCH_SIZE) * 100)}% of epoch {epoch + 1} completed",
+            end="\r",
+        )
 
-    loss_history[epoch] = loss / (60000 // BATCH_SIZE)
-    accuracy_history[epoch] = n_correct / 60000
+    loss_history[epoch] = loss / (i * BATCH_SIZE)
+    accuracy_history[epoch] = n_correct / (i * BATCH_SIZE)
 
     # Time calculation
     epoch_end_time = time.time()
@@ -93,7 +99,7 @@ for epoch in range(N_EPOCHS):
     )
 
     # Evaluate the model on the test set every 10 epochs
-    if (epoch + 1) % 10 == 0:
+    if (epoch + 1) % 5 == 0:
         correct_predictions = 0
         for i in range(x_test.shape[0]):
             input = x_test[i].reshape(LAYER_SIZES[0], 1)
