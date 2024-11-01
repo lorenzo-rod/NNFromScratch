@@ -5,9 +5,9 @@ from feed_forward_network import FeedForwardNetwork, ReLU, Identity
 
 LAYER_SIZES = [1, 10, 10, 1]
 ACTIVATION_FUNCTIONS = [ReLU(), ReLU(), Identity()]
-LEARNING_RATE = 1e-3
-N_EPOCHS = 100000
-BATCH_SIZE = 8
+LEARNING_RATE = 1e-4
+N_EPOCHS = 10000
+BATCH_SIZE = 64
 
 # Generate training data for the sine wave
 x_train = np.linspace(0, 2 * np.pi, 100)  # 100 samples between 0 and 2π
@@ -30,17 +30,15 @@ for epoch in range(N_EPOCHS):
     epoch_start_time = time.time()
     loss = 0
 
-    for _ in range(BATCH_SIZE):
-        # Randomly sample from the training data
-        random_index = np.random.choice(x_train.shape[0])
-        input = x_train[random_index].reshape(LAYER_SIZES[0], 1)
-        y_pred = network.forward(input)
-        y_true = y_train[random_index]
-        network.backward(y_true, y_pred)
-        loss += np.sum(0.5 * (y_true - y_pred) ** 2)
+    for _ in range(x_train.shape[0] // BATCH_SIZE):
+        indices = [np.random.randint(0, x_train.shape[0]) for _ in range(BATCH_SIZE)]
+        x_batch = x_train[indices].T
+        y_batch = y_train[indices].T
+        y_pred_batch = network.forward(x_batch)
+        network.backward(y_batch, y_pred_batch, LEARNING_RATE)
+        loss += np.sum(0.5 * (y_batch - y_pred_batch) ** 2)
 
-    network.update_params(LEARNING_RATE)
-    loss_history[epoch] = loss / BATCH_SIZE
+    loss_history[epoch] = loss / x_train.shape[0]
 
     # Time calculation
     epoch_end_time = time.time()

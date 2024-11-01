@@ -38,7 +38,7 @@ class LinearLayer(Layer):
         return self.forward_no_grad(x)
 
     def forward_no_grad(self, x):
-        return np.transpose(self._weights) @ x + self._biases
+        return self._weights.T @ x + self._biases
 
     def backward(self, upstream_gradient):
         self._grad_biases += np.sum(upstream_gradient, axis=1, keepdims=True)
@@ -50,8 +50,8 @@ class LinearLayer(Layer):
         self._grad_biases = np.zeros_like(self._grad_biases)
 
     def update_params(self, learning_rate):
-        self._weights -= learning_rate * self._grad_weights / self._batch_size
-        self._biases -= learning_rate * self._grad_biases / self._batch_size
+        self._weights -= learning_rate * (self._grad_weights / self._batch_size)
+        self._biases -= learning_rate * (self._grad_biases / self._batch_size)
 
 
 class ReLU(Layer):
@@ -144,12 +144,9 @@ class FeedForwardNetwork:
             x = layer.forward_no_grad(x)
         return x
 
-    def backward(self, y_true, y_pred):
+    def backward(self, y_true, y_pred, learning_rate):
         upstream_gradient = y_pred - y_true
         for layer in reversed(self.layers[:-1]):
             upstream_gradient = layer.backward(upstream_gradient)
-
-    def update_params(self, learning_rate):
-        for layer in self.layers[:-1]:
             layer.update_params(learning_rate)
             layer.reset_gradients()

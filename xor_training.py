@@ -1,12 +1,12 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from feed_forward_network import FeedForwardNetwork, ReLU, Sigmoid, Softmax
+from feed_forward_network import FeedForwardNetwork, ReLU, Sigmoid
 
 LAYER_SIZES = [2, 10, 5, 1]
 ACTIVATION_FUNCTIONS = [ReLU(), ReLU(), Sigmoid()]
-LEARNING_RATE = 5e-3
-N_EPOCHS = 10000
+LEARNING_RATE = 1e-3
+N_EPOCHS = 5000
 BATCH_SIZE = 4
 
 network = FeedForwardNetwork(LAYER_SIZES, ACTIVATION_FUNCTIONS)
@@ -23,19 +23,14 @@ start_time = time.time()
 for epoch in range(N_EPOCHS):
     epoch_start_time = time.time()
     loss = 0
-    index = 0
 
-    for _ in range(BATCH_SIZE):
-        index = index % x_train.shape[0]
-        n_index = index
-        index += 1
-        input = np.transpose(x_train[n_index]).reshape(LAYER_SIZES[0], 1)
-        y_pred = network.forward(input)
-        y_true = y_train[n_index]
-        network.backward(y_true, y_pred)
-        loss += np.sum(-y_true * np.log(y_pred) - (1 - y_true) * np.log(1 - y_pred))
+    batch_indices = [0, 1, 2, 3]
+    x_batch = x_train[0:4].T
+    y_batch = y_train[batch_indices].T
+    y_pred_batch = network.forward(x_batch)
+    network.backward(y_batch, y_pred_batch, LEARNING_RATE)
+    loss += np.sum(-y_batch * np.log(y_pred_batch + 1e-8))
 
-    network.update_params(LEARNING_RATE)
     loss_history[epoch] = loss / BATCH_SIZE
 
     # Time calculation
