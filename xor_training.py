@@ -24,9 +24,8 @@ for epoch in range(N_EPOCHS):
     epoch_start_time = time.time()
     loss = 0
 
-    batch_indices = [0, 1, 2, 3]
     x_batch = x_train[0:4].T
-    y_batch = y_train[batch_indices].T
+    y_batch = y_train[0:4].T
     y_pred_batch = network.forward(x_batch)
     network.backward(y_batch, y_pred_batch, LEARNING_RATE)
     loss += np.sum(-y_batch * np.log(y_pred_batch + 1e-8))

@@ -10,14 +10,12 @@ N_EPOCHS = 10000
 BATCH_SIZE = 64
 
 # Generate training data for the sine wave
-x_train = np.linspace(0, 2 * np.pi, 100)  # 100 samples between 0 and 2π
-y_train = np.sin(x_train)  # Corresponding sine values
+x_train = np.linspace(0, 2 * np.pi, 100)
+y_train = np.sin(x_train)
 
 # Reshape data to fit the network's input and output dimensions
-x_train = x_train.reshape(-1, 1)  # Each input is a single value (reshape to (100, 1))
-y_train = y_train.reshape(
-    -1, 1
-)  # Each output is a single sine value (reshape to (100, 1))
+x_train = x_train.reshape(-1, 1)
+y_train = y_train.reshape(-1, 1)
 
 network = FeedForwardNetwork(LAYER_SIZES, ACTIVATION_FUNCTIONS)
 
